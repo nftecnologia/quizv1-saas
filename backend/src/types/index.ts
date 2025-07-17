@@ -1,9 +1,21 @@
 import { Request } from 'express';
 import { User } from '@supabase/supabase-js';
 
-// Extend Express Request to include user
-export interface AuthenticatedRequest extends Request {
+// Use the standard Express Request type with user property
+export type AuthenticatedRequest = Request & {
   user?: User;
+};
+
+// Export User type for convenience
+export { User };
+
+// Ensure all Request properties are properly typed
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
 }
 
 // API Response types
