@@ -9,15 +9,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import configurations
-import { initSentry, sentryErrorHandler } from '@/config/sentry';
-import logger from '@/utils/logger';
+import { initSentry, sentryErrorHandler } from './config/sentry';
+import logger from './utils/logger';
 
 // Import middlewares
-import { errorHandler, notFoundHandler } from '@/middleware/errorHandler';
-import { generalLimiter } from '@/middleware/rateLimiter';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { generalLimiter } from './middleware/rateLimiter';
 
 // Import routes
-import apiRoutes from '@/routes';
+import apiRoutes from './routes';
 
 // Create Express app
 const app = express();
