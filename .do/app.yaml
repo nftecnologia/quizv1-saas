@@ -1,0 +1,270 @@
+# ===================================
+# DigitalOcean App Platform Configuration
+# QuizV1 - SaaS de Funis Interativos
+# ===================================
+#
+# ANTES DE USAR:
+# 1. Substitua 'your-github-username' pelo seu usuário do GitHub
+# 2. Configure as variáveis de ambiente no DigitalOcean
+# 3. Certifique-se de que o repositório está público ou configure deploy keys
+# 4. Verifique se o domínio está configurado corretamente
+#
+# DEPLOY:
+# doctl apps create --spec .do/app.yaml
+# ===================================
+
+name: quiz-platform
+region: nyc
+features:
+  - buildpack-stack=ubuntu-22
+  
+# Domain Configuration
+domains:
+  - domain: quizv1.com
+    type: PRIMARY
+    zone: quizv1.com
+  - domain: www.quizv1.com
+    type: ALIAS
+    zone: quizv1.com
+
+# Services Configuration
+services:
+  # Backend API Service
+  - name: api
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-s
+    http_port: 3000
+    
+    github:
+      repo: your-github-username/quizv1
+      branch: main
+      deploy_on_push: true
+    
+    source_dir: /backend
+    
+    build_command: npm ci --production=false && npm run build
+    run_command: npm start
+    
+    # Environment Variables
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: SUPABASE_URL
+        value: "${SUPABASE_URL}"
+        type: SECRET
+      - key: SUPABASE_SERVICE_KEY
+        value: "${SUPABASE_SERVICE_KEY}"
+        type: SECRET
+      - key: SUPABASE_ANON_KEY
+        value: "${SUPABASE_ANON_KEY}"
+        type: SECRET
+      - key: JWT_SECRET
+        value: "${JWT_SECRET}"
+        type: SECRET
+      - key: REDIS_URL
+        value: "${REDIS_URL}"
+        type: SECRET
+      - key: SENTRY_DSN
+        value: "${SENTRY_DSN}"
+        type: SECRET
+      - key: CORS_ORIGIN
+        value: "https://quizv1.com,https://www.quizv1.com"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      - key: LOG_LEVEL
+        value: "info"
+      - key: API_VERSION
+        value: "v1"
+      - key: WEBHOOK_SECRET
+        value: "${WEBHOOK_SECRET}"
+        type: SECRET
+      - key: UPSTASH_REDIS_REST_URL
+        value: "${UPSTASH_REDIS_REST_URL}"
+        type: SECRET
+      - key: UPSTASH_REDIS_REST_TOKEN
+        value: "${UPSTASH_REDIS_REST_TOKEN}"
+        type: SECRET
+    
+    # Health Check
+    health_check:
+      http_path: /api/v1/health
+      initial_delay_seconds: 60
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    
+    # Route Configuration
+    routes:
+      - path: /api
+        preserve_path_prefix: true
+    
+    # Resource Limits
+    autoscaling:
+      min_instance_count: 1
+      max_instance_count: 3
+      metrics:
+        cpu:
+          percent: 80
+
+# Static Site (Frontend)
+static_sites:
+  - name: frontend
+    github:
+      repo: your-github-username/quizv1
+      branch: main
+      deploy_on_push: true
+    
+    source_dir: /frontend
+    build_command: npm ci --production=false && npm run build
+    output_dir: dist
+    
+    # Environment Variables for Build
+    envs:
+      - key: VITE_SUPABASE_URL
+        value: "${SUPABASE_URL}"
+        type: SECRET
+      - key: VITE_SUPABASE_ANON_KEY
+        value: "${SUPABASE_ANON_KEY}"
+        type: SECRET
+      - key: VITE_API_URL
+        value: "https://quiz-platform-api.ondigitalocean.app/api/v1"
+      - key: VITE_SENTRY_DSN
+        value: "${VITE_SENTRY_DSN}"
+        type: SECRET
+      - key: VITE_ENVIRONMENT
+        value: "production"
+      - key: VITE_APP_VERSION
+        value: "1.0.0"
+      - key: VITE_ANALYTICS_ENABLED
+        value: "true"
+      - key: VITE_DEBUG_MODE
+        value: "false"
+    
+    # Routes Configuration
+    routes:
+      - path: /
+        preserve_path_prefix: false
+    
+    # SPA Configuration
+    index_document: index.html
+    error_document: index.html
+    catchall_document: index.html
+    
+    # CORS Configuration
+    cors:
+      allow_origins:
+        - exact: "https://quizv1.com"
+        - exact: "https://www.quizv1.com"
+        - exact: "https://quiz-platform-api.ondigitalocean.app"
+      allow_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allow_headers:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+        - Accept
+        - Origin
+      allow_credentials: true
+      max_age: "86400"
+
+# Database Configuration (External Supabase)
+databases: []
+
+# Jobs for Maintenance Tasks
+jobs:
+  - name: db-migration
+    kind: PRE_DEPLOY
+    github:
+      repo: your-github-username/quizv1
+      branch: main
+    source_dir: /supabase
+    build_command: echo "Preparing database migrations..."
+    run_command: |
+      echo "Database migrations should be handled by Supabase migrations"
+      echo "This job ensures database is ready before deployment"
+    
+    envs:
+      - key: SUPABASE_URL
+        value: "${SUPABASE_URL}"
+        type: SECRET
+      - key: SUPABASE_SERVICE_KEY
+        value: "${SUPABASE_SERVICE_KEY}"
+        type: SECRET
+    
+    instance_count: 1
+    instance_size_slug: basic-s
+
+# Worker for Background Tasks
+workers:
+  - name: analytics-worker
+    github:
+      repo: your-github-username/quizv1
+      branch: main
+    source_dir: /backend
+    
+    build_command: npm ci --production=false && npm run build
+    run_command: node dist/services/analyticsWorker.js
+    
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: WORKER_TYPE
+        value: analytics
+      - key: SUPABASE_URL
+        value: "${SUPABASE_URL}"
+        type: SECRET
+      - key: SUPABASE_SERVICE_KEY
+        value: "${SUPABASE_SERVICE_KEY}"
+        type: SECRET
+      - key: REDIS_URL
+        value: "${REDIS_URL}"
+        type: SECRET
+      - key: SENTRY_DSN
+        value: "${SENTRY_DSN}"
+        type: SECRET
+      - key: UPSTASH_REDIS_REST_URL
+        value: "${UPSTASH_REDIS_REST_URL}"
+        type: SECRET
+      - key: UPSTASH_REDIS_REST_TOKEN
+        value: "${UPSTASH_REDIS_REST_TOKEN}"
+        type: SECRET
+    
+    instance_count: 1
+    instance_size_slug: basic-s
+
+# Alerts Configuration
+alerts:
+  - rule: CPU_UTILIZATION
+    disabled: false
+    operator: GREATER_THAN
+    value: 80
+    window: FIVE_MINUTES
+  - rule: MEM_UTILIZATION
+    disabled: false
+    operator: GREATER_THAN
+    value: 80
+    window: FIVE_MINUTES
+  - rule: RESTART_COUNT
+    disabled: false
+    operator: GREATER_THAN
+    value: 3
+    window: ONE_HOUR
+  - rule: DEPLOYMENT_FAILED
+    disabled: false
+  - rule: DOMAIN_FAILED
+    disabled: false
+
+# Maintenance Mode Configuration
+maintenance:
+  enabled: false
+  archive: false

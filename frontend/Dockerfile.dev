@@ -1,0 +1,37 @@
+# Development Dockerfile for Frontend
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache curl git
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S frontend -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies (including dev dependencies)
+RUN npm ci --include=dev
+
+# Copy source code
+COPY frontend/ ./
+
+# Change ownership
+RUN chown -R frontend:nodejs /app
+
+# Switch to non-root user
+USER frontend
+
+# Expose Vite development port
+EXPOSE 5173
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5173 || exit 1
+
+# Development command
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
