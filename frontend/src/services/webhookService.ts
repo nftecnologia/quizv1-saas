@@ -89,7 +89,7 @@ class WebhookService {
       }
 
       // Verificar assinatura
-      if (!this.verifySignature(platform, signature, body, config.secret)) {
+      if (!(await this.verifySignature(platform, signature, body, config.secret))) {
         throw new Error('Invalid webhook signature')
       }
 
@@ -135,24 +135,24 @@ class WebhookService {
   }
 
   // Verificar assinatura do webhook
-  private verifySignature(
+  private async verifySignature(
     platform: WebhookPlatform,
     signature: string,
     body: string,
     secret: string
-  ): boolean {
+  ): Promise<boolean> {
     try {
       switch (platform) {
         case 'hotmart':
-          return this.verifyHotmartSignature(signature, body, secret)
+          return await this.verifyHotmartSignature(signature, body, secret)
         case 'eduzz':
-          return this.verifyEduzzSignature(signature, body, secret)
+          return await this.verifyEduzzSignature(signature, body, secret)
         case 'stripe':
-          return this.verifyStripeSignature(signature, body, secret)
+          return await this.verifyStripeSignature(signature, body, secret)
         case 'kirvano':
-          return this.verifyKirvanoSignature(signature, body, secret)
+          return await this.verifyKirvanoSignature(signature, body, secret)
         case 'monetizze':
-          return this.verifyMonetizzeSignature(signature, body, secret)
+          return await this.verifyMonetizzeSignature(signature, body, secret)
         default:
           return false
       }
@@ -162,51 +162,117 @@ class WebhookService {
     }
   }
 
-  private verifyHotmartSignature(signature: string, body: string, secret: string): boolean {
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex')
-    return signature === expectedSignature
+  private async verifyHotmartSignature(signature: string, body: string, secret: string): Promise<boolean> {
+    try {
+      const encoder = new TextEncoder()
+      const keyData = encoder.encode(secret)
+      const messageData = encoder.encode(body)
+      
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      )
+      
+      const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData)
+      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      return signature === expectedSignature
+    } catch {
+      return false
+    }
   }
 
-  private verifyEduzzSignature(signature: string, body: string, secret: string): boolean {
-    const expectedSignature = crypto
-      .createHash('md5')
-      .update(body + secret)
-      .digest('hex')
-    return signature === expectedSignature
+  private async verifyEduzzSignature(signature: string, body: string, secret: string): Promise<boolean> {
+    try {
+      const encoder = new TextEncoder()
+      const data = encoder.encode(body + secret)
+      
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const expectedSignature = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      return signature === expectedSignature
+    } catch {
+      return false
+    }
   }
 
-  private verifyStripeSignature(signature: string, body: string, secret: string): boolean {
-    const elements = signature.split(',')
-    const timestamp = elements.find(el => el.startsWith('t='))?.split('=')[1]
-    const sig = elements.find(el => el.startsWith('v1='))?.split('=')[1]
-    
-    if (!timestamp || !sig) return false
+  private async verifyStripeSignature(signature: string, body: string, secret: string): Promise<boolean> {
+    try {
+      const elements = signature.split(',')
+      const timestamp = elements.find(el => el.startsWith('t='))?.split('=')[1]
+      const sig = elements.find(el => el.startsWith('v1='))?.split('=')[1]
+      
+      if (!timestamp || !sig) return false
 
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(timestamp + '.' + body)
-      .digest('hex')
-    
-    return sig === expectedSignature
+      const encoder = new TextEncoder()
+      const keyData = encoder.encode(secret)
+      const messageData = encoder.encode(timestamp + '.' + body)
+      
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      )
+      
+      const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData)
+      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      return sig === expectedSignature
+    } catch {
+      return false
+    }
   }
 
-  private verifyKirvanoSignature(signature: string, body: string, secret: string): boolean {
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex')
-    return signature === expectedSignature
+  private async verifyKirvanoSignature(signature: string, body: string, secret: string): Promise<boolean> {
+    try {
+      const encoder = new TextEncoder()
+      const keyData = encoder.encode(secret)
+      const messageData = encoder.encode(body)
+      
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      )
+      
+      const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData)
+      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      return signature === expectedSignature
+    } catch {
+      return false
+    }
   }
 
-  private verifyMonetizzeSignature(signature: string, body: string, secret: string): boolean {
-    const expectedSignature = crypto
-      .createHash('sha256')
-      .update(body + secret)
-      .digest('hex')
-    return signature === expectedSignature
+  private async verifyMonetizzeSignature(signature: string, body: string, secret: string): Promise<boolean> {
+    try {
+      const encoder = new TextEncoder()
+      const data = encoder.encode(body + secret)
+      
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const expectedSignature = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      return signature === expectedSignature
+    } catch {
+      return false
+    }
   }
 
   // Extrair informações do webhook baseado na plataforma

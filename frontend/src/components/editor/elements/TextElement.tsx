@@ -42,7 +42,7 @@ export const TextElement: React.FC<TextElementProps> = ({
 }) => {
   const [localContent, setLocalContent] = useState(element.content);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
-  const textRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleDoubleClick = () => {

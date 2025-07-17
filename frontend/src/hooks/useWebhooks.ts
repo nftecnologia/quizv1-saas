@@ -250,8 +250,8 @@ export function useWebhooks() {
       return count || 0
     },
     onSuccess: (count) => {
-      queryClient.invalidateQueries(['webhook-jobs'])
-      queryClient.invalidateQueries(['queue-stats'])
+      queryClient.invalidateQueries({ queryKey: ['webhook-jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['queue-stats'] })
       toast({
         title: "Cleanup Complete",
         description: `Cleaned up ${count} old jobs.`
