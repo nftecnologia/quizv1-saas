@@ -97,8 +97,6 @@ export const TextElement: React.FC<TextElementProps> = ({
     }
   }, [isInlineEditing]);
 
-  const Tag = variantTags[element.variant] as keyof JSX.IntrinsicElements;
-
   const textStyle = {
     textAlign: element.style.textAlign || 'left',
     fontWeight: element.style.fontWeight,
@@ -222,19 +220,22 @@ export const TextElement: React.FC<TextElementProps> = ({
       )}
 
       {/* Text Content */}
-      <Tag
-        className={cn(
-          variantStyles[element.variant],
-          'cursor-text transition-all duration-200',
-          isEditing && 'ring-2 ring-blue-500 ring-opacity-30 rounded-md',
-          element.content.trim() === '' && 'text-gray-400'
-        )}
-        style={textStyle}
-        onDoubleClick={handleDoubleClick}
-        contentEditable={false}
-      >
-        {element.content || 'Clique duas vezes para editar'}
-      </Tag>
+      {React.createElement(
+        variantTags[element.variant],
+        {
+          className: cn(
+            variantStyles[element.variant],
+            'cursor-text transition-all duration-200',
+            isEditing && 'ring-2 ring-blue-500 ring-opacity-30 rounded-md',
+            element.content.trim() === '' && 'text-gray-400'
+          ),
+          style: textStyle,
+          onDoubleClick: handleDoubleClick,
+          contentEditable: false,
+          suppressContentEditableWarning: true,
+        },
+        element.content || 'Clique duas vezes para editar'
+      )}
 
       {/* Placeholder for empty text */}
       {element.content.trim() === '' && (
